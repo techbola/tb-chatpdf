@@ -1,19 +1,15 @@
-import AWS from "aws-sdk";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3Client = new S3Client({
+  region: process.env.NEXT_PUBLIC_S3_REGION,
+  credentials: {
+    accessKeyId: process.env.NEXT_PUBLIC_S3_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.NEXT_PUBLIC_S3_SECRET_ACCESS_KEY!,
+  },
+});
 
 export async function uploadToS3(file: File) {
   try {
-    AWS.config.update({
-      accessKeyId: process.env.NEXT_PUBLIC_S3_ACCESS_KEY_ID,
-      secretAccessKey: process.env.NEXT_PUBLIC_S3_SECRET_ACCESS_KEY,
-    });
-
-    const s3 = new AWS.S3({
-      params: {
-        Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
-      },
-      region: process.env.NEXT_PUBLIC_S3_REGION,
-    });
-
     const file_key =
       "uploads/" + Date.now().toString() + file.name.replace(" ", "-");
 
@@ -23,27 +19,19 @@ export async function uploadToS3(file: File) {
       Body: file,
     };
 
-    const upload = s3
-      .putObject(params)
-      .on("httpUploadProgress", (evt) => {
-        console.log(
-          "uploading to s3...",
-          parseInt(((evt.loaded / evt.total) * 100).toString())
-        ) + "%";
-      })
-      .promise();
+    const command = new PutObjectCommand(params);
 
-    await upload.then((data) => {
-      console.log("successfully uploaded to S3!", file_key);
-      console.log("data", data);
-    });
+    // The progress tracking part for AWS SDK v3 requires more custom handling
+    const response = await s3Client.send(command);
+    console.log("Successfully uploaded to S3!", file_key);
+    console.log("response", response);
 
     return Promise.resolve({
       file_key,
       file_name: file.name,
     });
   } catch (err) {
-    console.log(err);
+    console.error("Error uploading file:", err);
     return null;
   }
 }

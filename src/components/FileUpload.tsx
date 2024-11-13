@@ -6,12 +6,12 @@ import { Inbox, Loader } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const FileUpload = () => {
   const [uploading, setUploading] = useState(false);
 
-  const { mutate, isLoading } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: async ({
       file_key,
       file_name,
@@ -19,11 +19,21 @@ const FileUpload = () => {
       file_key: string;
       file_name: string;
     }) => {
-      const response = await axios.post("/api/create-chat", {
-        file_key,
-        file_name,
-      });
-      return response.data;
+      try {
+        console.log("file_key", file_key, file_name);
+
+        const response = await axios.post("/api/create-chat", {
+          file_key,
+          file_name,
+        });
+
+        console.log("response", response);
+
+        return response.data;
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+      }
     },
   });
 
@@ -51,7 +61,8 @@ const FileUpload = () => {
 
         mutate(data, {
           onSuccess: (data) => {
-            toast.success(data.message);
+            console.log(data);
+            // toast.success(data.message);
           },
           onError: (err) => {
             toast.error(`error: ${err}`);
@@ -75,7 +86,7 @@ const FileUpload = () => {
       >
         <input {...getInputProps()} />
 
-        {uploading || isLoading ? (
+        {uploading || isPending ? (
           <>
             <Loader className="h-10 w-10 text-blue-500 animate-spin" />
             <p className="mt-2 text-sm text-slate-400">
